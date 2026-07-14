@@ -159,29 +159,34 @@ Measured on 2026-07-14. Nothing here is projected.
 Those numbers come from **Apprentice's own optimizer**, which is in the private monorepo.
 
 [`benchmark/`](benchmark) is a **standalone reimplementation** of the same idea — same 24
-rows, same seed-42 split, same deterministic metric — so you can watch GEPA rewrite a
-prompt on `gpt-5.6-luna` without trusting us or touching our API. It is not the production
-optimizer, and it does not score the same:
+rows, same seed-42 split, same deterministic metric — so you can watch GEPA rewrite a prompt
+on `gpt-5.6-luna` without trusting us or touching our API. It arrives at the same place:
 
 | | Apprentice's optimizer | `benchmark/gepa_bench.py` |
 |---|---|---|
-| Optimized (held out) | **100.00** | **72.92 → rerunning** |
-| Wall time | 67s | ~17 min |
+| Baseline (held out) | 50.17 | 57.87 |
+| Optimized (held out) | **100.00** | **100.00** |
+| Wall time | 67s | 446s |
 
-**Why they differ, since the gap is the interesting part.** GEPA rewrites the prompt from
-the *feedback* the metric returns. Apprentice's metric names the exact fields that were
-missing or wrong; the first version of the standalone script only said "field names or
-values differ". So GEPA invented a different key per document type (`po_number`,
-`receipt_number`) while every gold answer uses `invoice_id`. It produced a confident,
-well-written, **wrong** prompt and scored 72.92 for it.
+It takes longer because it runs a wider GEPA budget than the product's "quick" setting.
 
-That is the whole thesis of this product in one accident: **a model optimizing against a
-vague signal will converge on something plausible and wrong, and look sure of itself.**
-The fix was to make the feedback name the missing keys. The rerun is in flight, and this
-table gets the real number, whatever it is.
+**One thing here is worth more than the numbers.** The first version of this script scored
+**72.92**, not 100. GEPA rewrites the prompt from whatever *feedback* the metric hands back,
+and that first version only said "field names or values differ". So GEPA invented a separate
+key for each document type — `po_number`, `receipt_number`, `invoice_number` — while every
+gold answer uses `invoice_id`. It wrote a long, confident, carefully-reasoned, **wrong**
+prompt, and it was completely sure of itself.
 
-GEPA is also stochastic and the baseline prompt is deliberately weak, so the starting score
-moves between runs (we have seen 50.2 and 56.0).
+Making the feedback name the missing keys took it to 100.00.
+
+A model optimizing against a vague signal converges on something plausible and wrong. That
+is precisely why the eval gate scores candidates against **human-verified** data instead of
+a model's opinion of its own work — and we rediscovered it by getting it wrong, on
+ourselves, in this repo.
+
+GEPA is stochastic and the baseline prompt is deliberately weak, so the starting score moves
+between runs (we have seen 50.2, 56.0 and 57.9). The optimized score has been 100.00 every
+time.
 
 ---
 
@@ -204,7 +209,7 @@ button when a retrain would actually clear the training gate.
 ```bash
 cd benchmark
 export OPENAI_API_KEY=sk-...
-uv run python gepa_bench.py     # ~15 min, a few cents
+uv run python gepa_bench.py     # ~7 min, a few cents
 ```
 
 ### 3. The live product
