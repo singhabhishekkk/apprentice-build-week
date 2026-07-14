@@ -1,0 +1,100 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <style>
+      /* Variant B: the real logo tile at full size, then the thesis, then the proof.
+         Brand is unmissable; the verdict chips still carry the argument. 1200x800 (3:2). */
+      @import url("https://fonts.googleapis.com/css2?family=Geist:wght@400;500;700&display=swap");
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      body {
+        width: 1200px;
+        height: 800px;
+        background: #0a0a0b;
+        font-family: Geist, ui-sans-serif, -apple-system, sans-serif;
+        color: #ededef;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        padding: 0 76px;
+        position: relative;
+        overflow: hidden;
+      }
+      .glow {
+        position: absolute;
+        width: 1000px;
+        height: 760px;
+        right: -240px;
+        top: 20px;
+        background: radial-gradient(closest-side, rgba(127, 176, 105, 0.15), transparent);
+      }
+      .top { display: flex; align-items: center; gap: 22px; margin-bottom: 34px; }
+      .logo { width: 92px; height: 92px; border-radius: 20px; }
+      .name { font-size: 44px; font-weight: 700; letter-spacing: -0.02em; }
+      .name small {
+        display: block;
+        font-size: 17px;
+        font-weight: 500;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: #66666e;
+        margin-top: 6px;
+      }
+      h1 {
+        font-size: 47px;
+        font-weight: 700;
+        line-height: 1.16;
+        letter-spacing: -0.02em;
+        max-width: 1010px;
+      }
+      h1 em { font-style: normal; color: #7fb069; }
+      .verdicts { display: flex; gap: 16px; margin-top: 40px; }
+      .v {
+        display: flex;
+        align-items: baseline;
+        gap: 12px;
+        padding: 15px 23px;
+        border-radius: 13px;
+        border: 2px solid;
+        font-variant-numeric: tabular-nums;
+      }
+      .v b { font-size: 36px; font-weight: 700; }
+      .v span { font-size: 17px; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; }
+      .refused { border-color: rgba(210, 105, 78, 0.55); background: rgba(210, 105, 78, 0.09); }
+      .refused b, .refused span { color: #d2694e; }
+      .promoted { border-color: rgba(127, 176, 105, 0.6); background: rgba(127, 176, 105, 0.12); }
+      .promoted b, .promoted span { color: #7fb069; }
+      .foot {
+        position: absolute;
+        bottom: 40px;
+        left: 76px;
+        font-size: 21px;
+        font-weight: 500;
+        color: #66666e;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="glow"></div>
+
+    <div class="top">
+      <svg class="logo" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+        <rect width="100" height="100" rx="22" fill="#1B1A16" />
+        <g transform="translate(50 50) scale(0.82) translate(-50 -50)">
+          <circle cx="46" cy="46" r="34" fill="#EDE6D6" />
+          <circle cx="74" cy="74" r="14" fill="#7FB069" />
+        </g>
+      </svg>
+      <div class="name">Apprentice<small>Developer Tools</small></div>
+    </div>
+
+    <h1>Fine-tuning made small models cheap.<br /><em>Knowing when to trust one</em> is now the expensive part.</h1>
+
+    <div class="verdicts">
+      <div class="v refused"><b>42.50</b><span>refused</span></div>
+      <div class="v promoted"><b>89.17</b><span>promoted</span></div>
+    </div>
+
+    <div class="foot">runapprentice.com</div>
+  </body>
+</html>
