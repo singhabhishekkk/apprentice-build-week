@@ -15,11 +15,10 @@
 
 **OpenAI Build Week · Developer Tools**
 
-<!-- VIDEO: replace VIDEO_ID once the film is public on YouTube -->
-[![Watch the demo film](https://img.youtube.com/vi/VIDEO_ID/maxresdefault.jpg)](https://youtu.be/VIDEO_ID)
+[![Watch the demo film](https://img.youtube.com/vi/ZjQGyK_V4FU/maxresdefault.jpg)](https://youtu.be/ZjQGyK_V4FU)
 
-**[▶ Watch the demo film](https://youtu.be/VIDEO_ID)** — 2:38, the whole loop, ending on the
-eval gate refusing a model.
+**[▶ Watch the demo film](https://youtu.be/ZjQGyK_V4FU)** — 1:47, the whole loop, ending on
+the eval gate refusing a model.
 
 </div>
 
