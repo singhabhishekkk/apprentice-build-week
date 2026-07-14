@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Apprentice — Drift</title>
+    <style>
+      :root {
+        --bg: #0a0a0b;
+        --panel: #121214;
+        --line: #232327;
+        --text: #ededef;
+        --dim: #9a9aa2;
+        --faint: #66666e;
+        --accent: #7fb069;
+        --warn: #d2694e;
+        font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+      }
+      * { box-sizing: border-box; }
+      body { margin: 0; background: var(--bg); color: var(--text); padding: 48px 24px; }
+      main { max-width: 900px; margin: 0 auto; }
+      h1 { font-size: 26px; margin: 0 0 6px; letter-spacing: -0.01em; }
+      .sub { color: var(--dim); margin: 0 0 32px; font-size: 15px; line-height: 1.5; }
+      .stats { display: flex; gap: 12px; margin-bottom: 24px; flex-wrap: wrap; }
+      .stat { flex: 1; min-width: 150px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; }
+      .stat b { display: block; font-size: 26px; font-variant-numeric: tabular-nums; font-weight: 600; }
+      .stat span { color: var(--faint); font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; }
+      section { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 20px 22px; margin-bottom: 18px; }
+      h2 { font-size: 15px; margin: 0 0 4px; font-weight: 600; }
+      .note { color: var(--faint); font-size: 13px; margin: 0 0 18px; line-height: 1.5; }
+      .chart { display: flex; align-items: flex-end; gap: 3px; height: 130px; border-bottom: 1px solid var(--line); }
+      .bar { flex: 1; background: #2a2a30; border-radius: 2px 2px 0 0; position: relative; min-height: 2px; }
+      .bar i { position: absolute; inset: auto 0 0 0; background: var(--accent); border-radius: 2px 2px 0 0; display: block; }
+      .plot { position: relative; height: 130px; border-bottom: 1px solid var(--line); }
+      .dot { position: absolute; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); transform: translate(-50%, 50%); }
+      .axis { display: flex; justify-content: space-between; color: var(--faint); font-size: 11px; margin-top: 8px; }
+      .retrain { border-color: rgba(127, 176, 105, 0.4); }
+      .retrain.blocked { border-color: var(--line); }
+      button { background: var(--accent); color: #08130a; border: 0; border-radius: 8px; padding: 10px 16px; font-weight: 600; font-size: 14px; cursor: pointer; }
+      button:disabled { background: #2a2a30; color: var(--faint); cursor: not-allowed; }
+      code { color: var(--dim); font-size: 12.5px; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Drift</h1>
+      <p class="sub">
+        What your app actually sent, and what it thought of the answers. When enough new
+        verified rows pile up, retrain from here.
+      </p>
+
+      <div class="stats" id="stats"></div>
+
+      <section>
+        <h2>Calls captured per day</h2>
+        <p class="note">
+          The filled part of each bar is the share your app rated. Unrated calls still
+          become training data once a human verifies them.
+        </p>
+        <div class="chart" id="traffic"></div>
+        <div class="axis" id="traffic-axis"></div>
+      </section>
+
+      <section>
+        <h2>Mean feedback score per day</h2>
+        <p class="note">
+          Only days your app rated appear. A day with no rating is left empty rather than
+          drawn as a zero.
+        </p>
+        <div class="plot" id="scores"></div>
+        <div class="axis" id="scores-axis"></div>
+      </section>
+
+      <section class="retrain" id="retrain"></section>
+    </main>
+
+    <script>
+      const TASK = "support-triage";
+      const fmtDay = (iso) => {
+        const [y, m, d] = iso.split("-").map(Number);
+        return new Date(y, m - 1, d).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+      };
+
+      async function load() {
+        const [drift, retrain] = await Promise.all([
+          fetch(`/v1/tasks/${TASK}/drift?days=30`).then((r) => r.json()),
+          fetch(`/v1/tasks/${TASK}/retrain-candidate`).then((r) => r.json()),
+        ]);
+
+        const series = drift.series;
+        const traces = series.reduce((a, d) => a + d.traces, 0);
+        const rated = series.reduce((a, d) => a + d.feedback_count, 0);
+        const scored = series.filter((d) => d.mean_feedback_score !== null);
+        const mean = scored.length
+          ? scored.reduce((a, d) => a + d.mean_feedback_score, 0) / scored.length
+          : null;
+
+        document.getElementById("stats").innerHTML = `
+          <div class="stat"><b>${traces.toLocaleString()}</b><span>Calls captured (30d)</span></div>
+          <div class="stat"><b>${rated.toLocaleString()}</b><span>Rated by your app</span></div>
+          <div class="stat"><b>${mean === null ? "—" : mean.toFixed(2)}</b><span>Mean feedback score</span></div>`;
+
+        const peak = Math.max(...series.map((d) => d.traces), 1);
+        document.getElementById("traffic").innerHTML = series
+          .map((d) => {
+            const h = Math.max(2, (d.traces / peak) * 100);
+            const inner = d.traces ? (d.feedback_count / d.traces) * 100 : 0;
+            return `<div class="bar" style="height:${h}%" title="${d.date}: ${d.traces} calls, ${d.feedback_count} rated"><i style="height:${inner}%"></i></div>`;
+          })
+          .join("");
+
+        const plot = document.getElementById("scores");
+        plot.innerHTML = scored
+          .map((d) => {
+            const i = series.indexOf(d);
+            const x = ((i + 0.5) / series.length) * 100;
+            const y = d.mean_feedback_score * 100;
+            return `<div class="dot" style="left:${x}%; bottom:${y}%" title="${d.date}: ${d.mean_feedback_score.toFixed(2)}"></div>`;
+          })
+          .join("");
+
+        const axis = `<span>${fmtDay(series[0].date)}</span><span>${fmtDay(series[series.length - 1].date)}</span>`;
+        document.getElementById("traffic-axis").innerHTML = axis;
+        document.getElementById("scores-axis").innerHTML = `<span>0.00</span><span>1.00</span>`;
+
+        const box = document.getElementById("retrain");
+        const ago = retrain.last_trained_at
+          ? Math.round((Date.now() - new Date(retrain.last_trained_at)) / 86400000) + " days ago"
+          : "never";
+        box.classList.toggle("blocked", !retrain.eligible);
+        box.innerHTML = `
+          <h2>Retrain</h2>
+          <div class="stats">
+            <div class="stat"><b>${retrain.new_gold_rows.toLocaleString()}</b><span>New gold rows</span></div>
+            <div class="stat"><b>${retrain.total_gold_rows.toLocaleString()}</b><span>Gold rows in total</span></div>
+          </div>
+          <p class="note">
+            New rows are the gold rows your last training run (finished ${ago}) never saw.
+            Training reads gold only, so silver rows are not counted here.
+            The gate needs ${retrain.min_train_rows.toLocaleString()} gold rows in total.
+          </p>
+          <button ${retrain.eligible ? "" : "disabled"}>
+            ${retrain.eligible ? "Retrain on " + retrain.new_gold_rows + " new gold rows" : "Not enough new gold data yet"}
+          </button>
+          <p class="note" style="margin-top:14px">
+            <code>GET /v1/tasks/${TASK}/drift?days=30</code><br />
+            <code>GET /v1/tasks/${TASK}/retrain-candidate</code>
+          </p>`;
+      }
+
+      load().catch((e) => {
+        document.querySelector("main").innerHTML =
+          `<h1>Drift</h1><p class="sub">${e}. Did you run <code>uv run python seed.py</code> first?</p>`;
+      });
+    </script>
+  </body>
+</html>

@@ -1,0 +1,5 @@
+__pycache__/
+*.pyc
+.venv/
+drift-demo/drift-demo.db
+.env

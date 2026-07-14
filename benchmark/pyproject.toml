@@ -1,0 +1,6 @@
+[project]
+name = "apprentice-gepa-bench"
+version = "1.0.0"
+description = "Reproduce Apprentice's GPT-5.6 prompt-optimization numbers"
+requires-python = ">=3.11"
+dependencies = ["dspy>=3.0.0", "openai>=1.0.0"]
