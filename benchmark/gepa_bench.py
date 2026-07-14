@@ -106,16 +106,54 @@ class Extract(dspy.Signature):
 
 
 def metric(example: dspy.Example, prediction: Any, *_: Any) -> Any:
-    score = field_f1(example.expected, getattr(prediction, "extracted", ""))
-    # GEPA reads this feedback to decide how to rewrite the prompt. A bare number teaches
-    # it nothing; naming the specific failure is what makes the rewrite converge.
+    """Score a prediction, and tell GEPA precisely what was wrong with it.
+
+    The feedback is not decoration. GEPA rewrites the prompt from it, so vague feedback
+    produces a vague prompt. An earlier version of this file said only "field names or
+    values differ", and GEPA duly invented a different key per document type
+    (`po_number`, `receipt_number`, ...) while the gold answers always use `invoice_id`.
+    It scored 72.92 and the prompt it wrote was confidently wrong.
+
+    Naming the missing and unexpected keys is what makes it converge.
+    """
+    raw = getattr(prediction, "extracted", "")
+    score = field_f1(example.expected, raw)
+
     if score == 1.0:
-        feedback = "Every field matched."
-    elif score == 0.0:
-        feedback = "No field matched. Return ONE JSON object, no prose, no code fences."
-    else:
-        feedback = f"Partially correct (F1 {score:.2f}). Field names or values differ from the expected JSON."
-    return dspy.Prediction(score=score, feedback=feedback)
+        return dspy.Prediction(score=score, feedback="Every field matched.")
+
+    try:
+        want = json.loads(example.expected)
+    except json.JSONDecodeError:
+        want = {}
+    try:
+        got = json.loads(extract_json(raw))
+        if not isinstance(got, dict):
+            got = {}
+    except (json.JSONDecodeError, TypeError):
+        return dspy.Prediction(
+            score=score,
+            feedback=(
+                "The output was not a JSON object. Return exactly one JSON object and nothing else: "
+                f"no prose, no code fences. Expected keys: {sorted(want)}."
+            ),
+        )
+
+    missing = sorted(set(want) - set(got))
+    unexpected = sorted(set(got) - set(want))
+    wrong_value = sorted(k for k in set(want) & set(got) if str(want[k]).strip().lower() != str(got[k]).strip().lower())
+
+    parts = [f"Field F1 {score:.2f}."]
+    if missing:
+        parts.append(f"Missing required keys: {missing}. Use these exact key names for every document type.")
+    if unexpected:
+        parts.append(f"Do not emit these keys: {unexpected}.")
+    if wrong_value:
+        parts.append(
+            "Wrong values for: "
+            + ", ".join(f"{k} (expected {want[k]!r}, got {got[k]!r})" for k in wrong_value)
+        )
+    return dspy.Prediction(score=score, feedback=" ".join(parts))
 
 
 def load_rows() -> list[dspy.Example]:

@@ -156,12 +156,32 @@ Measured on 2026-07-14. Nothing here is projected.
 | Metric | deterministic JSON field F1 — no LLM judge marks its own homework |
 | Split | 24 rows, seed 42, 12-row holdout |
 
-Reproduce it: [`benchmark/`](benchmark). It talks to OpenAI and DSPy directly and needs
-nothing of ours.
+Those numbers come from **Apprentice's own optimizer**, which is in the private monorepo.
 
-**Expect the shape, not the digits.** GEPA is stochastic and the baseline prompt is
-deliberately weak, so the starting score moves between runs (we have seen 50.2 and 56.0).
-What is stable is that the optimized prompt scores 100 on the holdout.
+[`benchmark/`](benchmark) is a **standalone reimplementation** of the same idea — same 24
+rows, same seed-42 split, same deterministic metric — so you can watch GEPA rewrite a
+prompt on `gpt-5.6-luna` without trusting us or touching our API. It is not the production
+optimizer, and it does not score the same:
+
+| | Apprentice's optimizer | `benchmark/gepa_bench.py` |
+|---|---|---|
+| Optimized (held out) | **100.00** | **72.92 → rerunning** |
+| Wall time | 67s | ~17 min |
+
+**Why they differ, since the gap is the interesting part.** GEPA rewrites the prompt from
+the *feedback* the metric returns. Apprentice's metric names the exact fields that were
+missing or wrong; the first version of the standalone script only said "field names or
+values differ". So GEPA invented a different key per document type (`po_number`,
+`receipt_number`) while every gold answer uses `invoice_id`. It produced a confident,
+well-written, **wrong** prompt and scored 72.92 for it.
+
+That is the whole thesis of this product in one accident: **a model optimizing against a
+vague signal will converge on something plausible and wrong, and look sure of itself.**
+The fix was to make the feedback name the missing keys. The rerun is in flight, and this
+table gets the real number, whatever it is.
+
+GEPA is also stochastic and the baseline prompt is deliberately weak, so the starting score
+moves between runs (we have seen 50.2 and 56.0).
 
 ---
 
@@ -184,7 +204,7 @@ button when a retrain would actually clear the training gate.
 ```bash
 cd benchmark
 export OPENAI_API_KEY=sk-...
-uv run python gepa_bench.py     # ~1 minute, a few cents
+uv run python gepa_bench.py     # ~15 min, a few cents
 ```
 
 ### 3. The live product
