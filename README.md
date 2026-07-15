@@ -222,9 +222,9 @@ pip install runapprentice
 ```python
 from runapprentice import Apprentice
 
-client = Apprentice(api_key="<from the console>")
+client = Apprentice(api_key="<from the console>", capture_async=False)
 trace_id = client.capture(task="support-triage", input=question, output=answer)
-if trace_id:                                  # capture is fail-open
+if trace_id:                                  # capture is fail-open, never raises
     client.feedback(trace_id, good=True)      # or good=False, or score=0.4
 ```
 
